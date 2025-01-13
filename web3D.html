@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hình Lập Phương</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 10;
+            background-color: white;
+            overflow: hidden;
+        }
+
+        .scene {
+            width: 100px;
+            height: 300px;
+            perspective: 1000px;
+        }
+
+        .cube {
+            width: 100px;
+            height: 100px;
+            position: relative;
+            transform-style: preserve-3d;
+            transform: rotateX(0deg) rotateY(0deg);
+            transition: transform 0.1s ease;
+        }
+
+        .cube div {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: rgba(20, 12, 255, 47);
+            border: 2px solid red;
+        }
+
+        .cube .front { transform: translateZ(50px); }
+        .cube .back { transform: rotateY(180deg) translateZ(50px); }
+        .cube .right { transform: rotateY(90deg) translateZ(50px); }
+        .cube .left { transform: rotateY(-90deg) translateZ(50px); }
+        .cube .top { transform: rotateX(90deg) translateZ(50px); }
+        .cube .bottom { transform: rotateX(-90deg) translateZ(50px); }
+    </style>
+</head>
+<body>
+    <div class="scene">
+        <div class="cube">
+            <div class="front"></div>
+            <div class="back"></div>
+            <div class="right"></div>
+            <div class="left"></div>
+            <div class="top"></div>
+            <div class="bottom"></div>
+        </div>
+    </div>
+
+    <script>
+        const cube = document.querySelector('.cube');
+        let isTouching = false;
+        let startX, startY;
+        let currentX = 0, currentY = 0;
+
+        // Sự kiện bắt đầu chạm
+        document.addEventListener('touchstart', (e) => {
+            isTouching = true;
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        });
+
+        // Sự kiện di chuyển cảm ứng
+        document.addEventListener('touchmove', (e) => {
+            if (!isTouching) return;
+
+            const deltaX = e.touches[0].clientX - startX;
+            const deltaY = e.touches[0].clientY - startY;
+
+            currentX += deltaY * 0.5;
+            currentY += deltaX * 0.5;
+
+            cube.style.transform = `rotateX(${currentX}deg) rotateY(${currentY}deg)`;
+
+            startX = e.touches[0].clientX;
+            startY = e.touches[0].clientY;
+        });
+
+        // Sự kiện kết thúc chạm
+        document.addEventListener('touchend', () => {
+            isTouching = false;
+        });
+
+        // Sự kiện khi cảm ứng rời khỏi màn hình
+        document.addEventListener('touchcancel', () => {
+            isTouching = false;
+        });
+    </script>
+
+</body></html>
