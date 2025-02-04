@@ -1,54 +1,41 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Render 3D Model</title>
-  <style>
-    body { margin: 0; }
-    canvas { display: block; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hiển thị mô hình 3D</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
 </head>
 <body>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/loaders/OBJLoader.js"></script>
-  <script>
-    // Tạo scene, camera và renderer
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
+    <script>
+        // Tạo scene
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
 
-    // Thêm ánh sáng
-    const light = new THREE.AmbientLight(0xffffff, 1); // Ánh sáng môi trường
-    scene.add(light);
+        // Thêm ánh sáng
+        const light = new THREE.AmbientLight(0xffffff);
+        scene.add(light);
 
-    // Tải mô hình 3D
-    const loader = new THREE.OBJLoader();
-    loader.load(
-      '3D_2.obj', // Đường dẫn đến tệp OBJ
-      function (object) {
-        scene.add(object);
-        object.position.set(0, 0, 0); // Đặt vị trí mô hình
-      },
-      function (xhr) {
-        console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-      },
-      function (error) {
-        console.error('An error happened', error);
-      }
-    );
+        // Tải file OBJ
+        const loader = new THREE.OBJLoader();
+        loader.load('3D_2.obj', function(object) {
+            scene.add(object);
+        }, undefined, function(error) {
+            console.error('Lỗi tải file:', error);
+        });
 
-    // Đặt vị trí camera
-    camera.position.z = 5;
+        camera.position.z = 5;
 
-    // Hàm render
-    function animate() {
-      requestAnimationFrame(animate);
-      renderer.render(scene, camera);
-    }
-    animate();
-  </script>
+        // Render vòng lặp
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
 </body>
 </html>
