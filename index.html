@@ -1,16 +1,28 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hiển thị mô hình 3D trên điện thoại</title>
+    <title>Game 3D với Kiểm tra va chạm</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/OBJLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TrackballControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/OBJLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        #joystick-container {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            width: 150px;
+            height: 150px;
+        }
+    </style>
 </head>
-<body style="margin: 0; overflow: hidden;">
+<body>
+    <div id="joystick-container"></div>
+
     <script>
-        // Tạo scene
+        // Khởi tạo scene, camera và renderer
         const scene = new THREE.Scene();
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -18,43 +30,107 @@
         document.body.appendChild(renderer.domElement);
 
         // Thêm ánh sáng
-        const light = new THREE.AmbientLight(0xffffff);
+        const light = new THREE.AmbientLight(0xffffff, 0.8);
         scene.add(light);
 
-        // Điều khiển bằng cảm ứng
-        const controls = new THREE.TrackballControls(camera, renderer.domElement);
-        controls.noRotate = false;  // Cho phép xoay
-        controls.noZoom = false;    // Cho phép zoom
-        controls.noPan = false;     // Cho phép di chuyển
-        controls.staticMoving = true;
-        controls.dynamicDampingFactor = 0.2;
-
-        // Tải mô hình OBJ
-        const loader = new THREE.OBJLoader();
-        loader.load('nv.obj', function(object) {
-            object.position.set(0, -1, 0);
-            scene.add(object);
-        }, undefined, function(error) {
-            console.error('Lỗi tải file:', error);
+        // Load mô hình căn phòng
+        let room;
+        let roomBoundingBox;
+        const roomLoader = new THREE.OBJLoader();
+        roomLoader.load('room.obj', function (object) {
+            room = object;
+            scene.add(room);
+            roomBoundingBox = new THREE.Box3().setFromObject(room);
         });
 
-        camera.position.set(0, 1, 5);
+        // Load mô hình nhân vật
+        let player;
+        let playerBoundingBox;
+        const playerLoader = new THREE.OBJLoader();
+        playerLoader.load('character.obj', function (object) {
+            player = object;
+            player.scale.set(0.1, 0.1, 0.1);
+            player.position.set(0, 0, 0);
+            scene.add(player);
+            playerBoundingBox = new THREE.Box3().setFromObject(player);
+        });
 
-        // Cập nhật và render liên tục
+        // Cài đặt camera góc nhìn thứ ba
+        camera.position.set(0, 2, 5);
+
+        // Điều khiển nhân vật (bàn phím)
+        let moveSpeed = 0.1;
+        let keys = {};
+
+        document.addEventListener("keydown", (event) => { keys[event.key] = true; });
+        document.addEventListener("keyup", (event) => { keys[event.key] = false; });
+
+        // Xử lý joystick
+        let joystickDirection = { x: 0, y: 0 };
+
+        const joystick = nipplejs.create({
+            zone: document.getElementById("joystick-container"),
+            mode: "dynamic",
+            position: { left: "50px", bottom: "50px" },
+            size: 100,
+            color: "blue"
+        });
+
+        joystick.on("move", (event, data) => {
+            let angle = data.angle.degree;
+            let force = data.force;
+
+            joystickDirection.x = Math.cos(angle * Math.PI / 180) * force * moveSpeed;
+            joystickDirection.y = Math.sin(angle * Math.PI / 180) * force * moveSpeed;
+        });
+
+        joystick.on("end", () => {
+            joystickDirection.x = 0;
+            joystickDirection.y = 0;
+        });
+
+        function checkCollision(newPosition) {
+            if (!player || !room) return false;
+
+            let testBoundingBox = playerBoundingBox.clone();
+            testBoundingBox.min.add(newPosition.clone().sub(player.position));
+            testBoundingBox.max.add(newPosition.clone().sub(player.position));
+
+            return roomBoundingBox.containsBox(testBoundingBox);
+        }
+
+        function updatePlayerPosition() {
+            if (!player) return;
+
+            let nextPosition = player.position.clone();
+
+            // Điều khiển bằng bàn phím
+            if (keys["ArrowLeft"]) nextPosition.x -= moveSpeed;
+            if (keys["ArrowRight"]) nextPosition.x += moveSpeed;
+            if (keys["ArrowUp"]) nextPosition.z -= moveSpeed;
+            if (keys["ArrowDown"]) nextPosition.z += moveSpeed;
+
+            // Điều khiển bằng joystick
+            nextPosition.x += joystickDirection.x;
+            nextPosition.z += joystickDirection.y;
+
+            // Kiểm tra va chạm trước khi di chuyển
+            if (checkCollision(nextPosition)) {
+                player.position.copy(nextPosition);
+                playerBoundingBox.setFromObject(player);
+            }
+
+            // Camera theo nhân vật
+            camera.position.set(player.position.x, player.position.y + 2, player.position.z + 5);
+            camera.lookAt(player.position);
+        }
+
         function animate() {
             requestAnimationFrame(animate);
-            controls.update();
+            updatePlayerPosition();
             renderer.render(scene, camera);
         }
         animate();
-
-        // Xử lý khi thay đổi kích thước màn hình
-        window.addEventListener('resize', function() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            controls.handleResize();
-        });
     </script>
 </body>
 </html>
