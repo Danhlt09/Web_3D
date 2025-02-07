@@ -1,136 +1,101 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game 3D với Kiểm tra va chạm</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/OBJLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/nipplejs@0.9.0/dist/nipplejs.min.js"></script>
-    <style>
-        body { margin: 0; overflow: hidden; }
-        #joystick-container {
-            position: fixed;
-            bottom: 10px;
-            left: 10px;
-            width: 150px;
-            height: 150px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Game with Joystick</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.110/examples/js/loaders/OBJLoader.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.8.1/nipplejs.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+    }
+    #joystick-container {
+      position: fixed;
+      bottom: 50px;
+      left: 50px;
+      width: 150px;
+      height: 150px;
+    }
+  </style>
 </head>
 <body>
-    <div id="joystick-container"></div>
+  <div id="joystick-container"></div>
 
-    <script>
-        // Khởi tạo scene, camera và renderer
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
+  <script>
+    // Khởi tạo scene, camera, và renderer
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
 
-        // Thêm ánh sáng
-        const light = new THREE.AmbientLight(0xffffff, 0.8);
-        scene.add(light);
+    // Thêm ánh sáng
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5); // Ánh sáng môi trường
+    scene.add(ambientLight);
 
-        // Load mô hình căn phòng
-        let room;
-        let roomBoundingBox;
-        const roomLoader = new THREE.OBJLoader();
-        roomLoader.load('room.obj', function (object) {
-            room = object;
-            scene.add(room);
-            roomBoundingBox = new THREE.Box3().setFromObject(room);
-        });
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1); // Đèn chiếu sáng chính
+    directionalLight.position.set(5, 10, 7.5);
+    scene.add(directionalLight);
 
-        // Load mô hình nhân vật
-        let player;
-        let playerBoundingBox;
-        const playerLoader = new THREE.OBJLoader();
-        playerLoader.load('character.obj', function (object) {
-            player = object;
-            player.scale.set(0.1, 0.1, 0.1);
-            player.position.set(0, 0, 0);
-            scene.add(player);
-            playerBoundingBox = new THREE.Box3().setFromObject(player);
-        });
+    // Tải mô hình căn phòng
+    const roomLoader = new THREE.OBJLoader();
+    roomLoader.load('room.obj', function (room) {
+      room.scale.set(0.1, 0.1, 0.1); // Điều chỉnh kích thước căn phòng
+      scene.add(room);
+    }, undefined, function (error) {
+      console.error('Error loading room.obj:', error);
+    });
 
-        // Cài đặt camera góc nhìn thứ ba
-        camera.position.set(0, 2, 5);
+    // Tải mô hình nhân vật
+    let character;
+    const characterLoader = new THREE.OBJLoader();
+    characterLoader.load('character.obj', function (loadedCharacter) {
+      character = loadedCharacter;
+      character.scale.set(0.05, 0.05, 0.05); // Điều chỉnh kích thước nhân vật
+      character.position.set(0, 0, 0); // Vị trí nhân vật
+      scene.add(character);
+    }, undefined, function (error) {
+      console.error('Error loading character.obj:', error);
+    });
 
-        // Điều khiển nhân vật (bàn phím)
-        let moveSpeed = 0.1;
-        let keys = {};
+    // Thiết lập camera
+    camera.position.set(0, 5, 10);
+    camera.lookAt(0, 0, 0);
 
-        document.addEventListener("keydown", (event) => { keys[event.key] = true; });
-        document.addEventListener("keyup", (event) => { keys[event.key] = false; });
+    // Vòng lặp render
+    function animate() {
+      requestAnimationFrame(animate);
+      renderer.render(scene, camera);
+    }
+    animate();
 
-        // Xử lý joystick
-        let joystickDirection = { x: 0, y: 0 };
+    // Đảm bảo canvas thay đổi kích thước theo màn hình
+    window.addEventListener('resize', () => {
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+    });
 
-        const joystick = nipplejs.create({
-            zone: document.getElementById("joystick-container"),
-            mode: "dynamic",
-            position: { left: "50px", bottom: "50px" },
-            size: 100,
-            color: "blue"
-        });
+    // Thêm joystick
+    const joystickContainer = document.getElementById('joystick-container');
+    const joystick = nipplejs.create({
+      zone: joystickContainer,
+      mode: 'dynamic',
+      position: { left: '50%', top: '50%' },
+      color: 'blue',
+    });
 
-        joystick.on("move", (event, data) => {
-            let angle = data.angle.degree;
-            let force = data.force;
-
-            joystickDirection.x = Math.cos(angle * Math.PI / 180) * force * moveSpeed;
-            joystickDirection.y = Math.sin(angle * Math.PI / 180) * force * moveSpeed;
-        });
-
-        joystick.on("end", () => {
-            joystickDirection.x = 0;
-            joystickDirection.y = 0;
-        });
-
-        function checkCollision(newPosition) {
-            if (!player || !room) return false;
-
-            let testBoundingBox = playerBoundingBox.clone();
-            testBoundingBox.min.add(newPosition.clone().sub(player.position));
-            testBoundingBox.max.add(newPosition.clone().sub(player.position));
-
-            return roomBoundingBox.containsBox(testBoundingBox);
-        }
-
-        function updatePlayerPosition() {
-            if (!player) return;
-
-            let nextPosition = player.position.clone();
-
-            // Điều khiển bằng bàn phím
-            if (keys["ArrowLeft"]) nextPosition.x -= moveSpeed;
-            if (keys["ArrowRight"]) nextPosition.x += moveSpeed;
-            if (keys["ArrowUp"]) nextPosition.z -= moveSpeed;
-            if (keys["ArrowDown"]) nextPosition.z += moveSpeed;
-
-            // Điều khiển bằng joystick
-            nextPosition.x += joystickDirection.x;
-            nextPosition.z += joystickDirection.y;
-
-            // Kiểm tra va chạm trước khi di chuyển
-            if (checkCollision(nextPosition)) {
-                player.position.copy(nextPosition);
-                playerBoundingBox.setFromObject(player);
-            }
-
-            // Camera theo nhân vật
-            camera.position.set(player.position.x, player.position.y + 2, player.position.z + 5);
-            camera.lookAt(player.position);
-        }
-
-        function animate() {
-            requestAnimationFrame(animate);
-            updatePlayerPosition();
-            renderer.render(scene, camera);
-        }
-        animate();
-    </script>
+    joystick.on('move', (evt, data) => {
+      if (character) {
+        const force = data.force * 0.05; // Điều chỉnh tốc độ nhân vật
+        const angle = data.angle.degree * (Math.PI / 180); // Chuyển đổi góc sang radian
+        character.position.x += Math.cos(angle) * force;
+        character.position.z -= Math.sin(angle) * force;
+      }
+    });
+  </script>
 </body>
 </html>
